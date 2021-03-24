@@ -1,16 +1,34 @@
-import re
+import datetime
 import os
+import re
 
+import pandas as pd
 import requests
 import tweepy
-from bs4 import BeautifulSoup
 
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko"
-}
+dams = [
+    {
+        "name": "玉川ダム",
+        "id": "BotTamagawaDam",
+        "json": "0972900700006.json",
+        "CK": os.environ["TAMAGAWA_CK"],
+        "CS": os.environ["TAMAGAWA_CS"],
+        "AT": os.environ["TAMAGAWA_AT"],
+        "AS": os.environ["TAMAGAWA_AS"],
+    },
+    {
+        "name": "台ダム",
+        "id": "BotUtenaDam",
+        "json": "0972900700007.json",
+        "CK": os.environ["UTENA_CK"],
+        "CS": os.environ["UTENA_CS"],
+        "AT": os.environ["UTENA_AT"],
+        "AS": os.environ["UTENA_AS"],
+    },
+]
 
 
-def dam_rate(dam):
+def dam_rate(dam, dt_now):
 
     # Twitterオブジェクトの生成
     auth = tweepy.OAuthHandler(dam["CK"], dam["CS"])
@@ -30,79 +48,45 @@ def dam_rate(dam):
     else:
         before = 0
 
-    url = f"http://i.river.go.jp/_-p01-_/p/ktm1801070/?mtm=10&swd=&prf=3801&twn=3801202&rvr=&den={dam['den']}"
+    s_ymd = dt_now.strftime("%Y%m%d")
+    s_hm = dt_now.strftime("%H%M")
 
-    r = requests.get(url, headers=headers)
+    url = f'https://www.river.go.jp/kawabou/file/files/tmlist/dam/{s_ymd}/{s_hm}/{dam["json"]}'
+
+    r = requests.get(url)
     r.raise_for_status()
-    soup = BeautifulSoup(r.content, "html5lib")
 
-    contents = soup.find("a", {"name": "contents"}).get_text("\n", strip=True)
+    data = r.json()
 
-    temp = re.sub(r"■\d{1,2}時間履歴\n単位：千m3\n", "", contents)
+    df = pd.json_normalize(data["min10Values"])
 
-    lines = [i.split() for i in temp.splitlines()]
+    df["DateTime"] = pd.to_datetime(df["obsTime"])
 
-    result = []
+    # 貯水率が欠損の行を削除
+    df.dropna(subset=["storPcntIrr"], inplace=True)
 
-    for line in lines:
+    se = df.iloc[0]
 
-        try:
-            time, _rate = line
-            rate = float(_rate)
-        except:
-            continue
+    tw = {}
 
-        else:
-            result.append({"time": time, "rate": rate})
+    tw["rate"] = se["storPcntIrr"]
+    tw["time"] = se["DateTime"].strftime("%H:%M")
 
-    # 結果確認
-    # print(result)
+    diff = tw["rate"] - before
 
-    n = len(result)
+    twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率'
 
-    if n:
+    # print(twit)
 
-        tw = result[0]
-
-        # 最新3件確認
-
-        if n > 2:
-
-            for j in result[:3]:
-                if j["time"] in ["06:00", "12:00", "18:00"]:
-                    tw = j
-                    break
-
-        diff = tw["rate"] - before
-
-        twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率'
-
-        # print(twit)
-        api.update_status(twit)
+    api.update_status(twit)
 
 
 if __name__ == "__main__":
 
-    dams = [
-        {
-            "name": "玉川ダム",
-            "id": "BotTamagawaDam",
-            "den": "0972900700006",
-            "CK": os.environ["TAMAGAWA_CK"],
-            "CS": os.environ["TAMAGAWA_CS"],
-            "AT": os.environ["TAMAGAWA_AT"],
-            "AS": os.environ["TAMAGAWA_AS"],
-        },
-        {
-            "name": "台ダム",
-            "id": "BotUtenaDam",
-            "den": "0972900700007",
-            "CK": os.environ["UTENA_CK"],
-            "CS": os.environ["UTENA_CS"],
-            "AT": os.environ["UTENA_AT"],
-            "AS": os.environ["UTENA_AS"],
-        },
-    ]
+    JST = datetime.timezone(datetime.timedelta(hours=+9))
+    dt_now = datetime.datetime.now(JST) - datetime.timedelta(minutes=8)
+
+    dt_tmp = dt_now.replace(minute=5, second=0, microsecond=0, tzinfo=None)
 
     for dam in dams:
-        dam_rate(dam)
+        dam_rate(dam, dt_tmp)
