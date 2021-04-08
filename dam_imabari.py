@@ -74,7 +74,7 @@ def dam_rate(dam, dt_now):
 
     diff = tw["rate"] - before
 
-    twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率'
+    twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率 #てや'
 
     # print(twit)
 
