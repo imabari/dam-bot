@@ -61,24 +61,28 @@ def dam_rate(dam, dt_now):
     df = pd.json_normalize(data["min10Values"])
 
     df["DateTime"] = pd.to_datetime(df["obsTime"])
+    
+    df["storPcntIrr"] = df["storPcntIrr"].where(df["storPcntIrr"] > 0)
 
     # 貯水率が欠損の行を削除
     df.dropna(subset=["storPcntIrr"], inplace=True)
+    
+    if len(df) > 0:
 
-    se = df.iloc[0]
+        se = df.iloc[0]
 
-    tw = {}
+        tw = {}
 
-    tw["rate"] = se["storPcntIrr"]
-    tw["time"] = se["DateTime"].strftime("%H:%M")
+        tw["rate"] = se["storPcntIrr"]
+        tw["time"] = se["DateTime"].strftime("%H:%M")
 
-    diff = tw["rate"] - before
+        diff = tw["rate"] - before
 
-    twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率 #てや'
+        twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率 #てや'
 
-    # print(twit)
+        # print(twit)
 
-    api.update_status(twit)
+        api.update_status(twit)
 
 
 if __name__ == "__main__":
