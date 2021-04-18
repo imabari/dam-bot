@@ -90,7 +90,7 @@ if __name__ == "__main__":
     JST = datetime.timezone(datetime.timedelta(hours=+9))
     dt_now = datetime.datetime.now(JST) - datetime.timedelta(minutes=8)
 
-    dt_tmp = dt_now.replace(minute=0, second=0, microsecond=0, tzinfo=None)
+    dt_tmp = dt_now.replace(minute=5, second=0, microsecond=0, tzinfo=None)
 
     for dam in dams:
         dam_rate(dam, dt_tmp)
