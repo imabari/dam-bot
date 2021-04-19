@@ -9,8 +9,8 @@ import tweepy
 dams = [
     {
         "name": "玉川ダム",
-        "id": "BotTamagawaDam",
-        "json": "0972900700006.json",
+        "twt_id": "BotTamagawaDam",
+        "dam_id": "U1001_MMENU003",
         "CK": os.environ["TAMAGAWA_CK"],
         "CS": os.environ["TAMAGAWA_CS"],
         "AT": os.environ["TAMAGAWA_AT"],
@@ -18,8 +18,8 @@ dams = [
     },
     {
         "name": "台ダム",
-        "id": "BotUtenaDam",
-        "json": "0972900700007.json",
+        "twt_id": "BotUtenaDam",
+        "dam_id": "U1001_MMENU004",
         "CK": os.environ["UTENA_CK"],
         "CS": os.environ["UTENA_CS"],
         "AT": os.environ["UTENA_AT"],
@@ -28,7 +28,30 @@ dams = [
 ]
 
 
-def dam_rate(dam, dt_now):
+def date_parse(se, year):
+
+    df = se.str.extract("(\d{2}/\d{2})? *(\d{2}:\d{2})").fillna(method="ffill")
+
+    df_date = (
+        df[0]
+        .str.split("/", expand=True)
+        .rename(columns={0: "month", 1: "day"})
+        .astype(int)
+    )
+
+    df_date["year"] = year
+
+    df_time = (
+        df[1]
+        .str.split(":", expand=True)
+        .rename(columns={0: "hour", 1: "minute"})
+        .astype(int)
+    )
+
+    return pd.to_datetime(df_date.join(df_time))
+
+
+def fetch_dam(dam, dt_now):
 
     # Twitterオブジェクトの生成
     auth = tweepy.OAuthHandler(dam["CK"], dam["CS"])
@@ -36,7 +59,7 @@ def dam_rate(dam, dt_now):
 
     api = tweepy.API(auth)
 
-    text = api.user_timeline(dam["id"])[0].text
+    text = api.user_timeline(dam["twt_id"])[0].text
 
     m = re.search(r"(\d+\.?\d*)%", text)
 
@@ -48,49 +71,48 @@ def dam_rate(dam, dt_now):
     else:
         before = 0
 
-    s_ymd = dt_now.strftime("%Y%m%d")
-    s_hm = dt_now.strftime("%H%M")
+    url = f'http://183.176.244.72/kawabou-mng/customizeMyMenuKeika.do?GID=05-5101&userId=U1001&myMenuId={dam["dam_id"]}&PG=1&KTM=3'
 
-    url = f'https://www.river.go.jp/kawabou/file/files/tmlist/dam/{s_ymd}/{s_hm}/{dam["json"]}'
+    df = (
+        pd.read_html(url, na_values="-")[1]
+        .rename(
+            columns={
+                0: "日時",
+                1: "貯水位",
+                2: "流入量",
+                3: "放流量",
+                4: "貯水量",
+                5: "貯水率",
+            }
+        )
+        .dropna(how="all", axis=1)
+    )
 
-    r = requests.get(url)
-    r.raise_for_status()
-
-    data = r.json()
-
-    df = pd.json_normalize(data["min10Values"])
-
-    df["DateTime"] = pd.to_datetime(df["obsTime"])
-    
-    df["storPcntIrr"] = df["storPcntIrr"].where(df["storPcntIrr"] > 0)
+    df["日時"] = date_parse(df["日時"], dt_now.year)
 
     # 貯水率が欠損の行を削除
-    df.dropna(subset=["storPcntIrr"], inplace=True)
-    
+    df.dropna(subset=["貯水率"], inplace=True)
+
     if len(df) > 0:
 
-        se = df.iloc[0]
+        se = df.iloc[-1]
 
         tw = {}
-
-        tw["rate"] = se["storPcntIrr"]
-        tw["time"] = se["DateTime"].strftime("%H:%M")
+        tw["rate"] = se["貯水率"]
+        tw["time"] = se["日時"].strftime("%H:%M")
 
         diff = tw["rate"] - before
 
-        twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率 #てや'
+        twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率'
 
-        # print(twit)
-
+        print(twit)
         api.update_status(twit)
 
 
 if __name__ == "__main__":
 
     JST = datetime.timezone(datetime.timedelta(hours=+9))
-    dt_now = datetime.datetime.now(JST) - datetime.timedelta(minutes=8)
-
-    dt_tmp = dt_now.replace(minute=5, second=0, microsecond=0, tzinfo=None)
+    dt_now = datetime.datetime.now(JST)
 
     for dam in dams:
-        dam_rate(dam, dt_tmp)
+        fetch_dam(dam, dt_now)
