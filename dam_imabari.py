@@ -95,8 +95,11 @@ def fetch_dam(dam, dt_now):
 
     if len(df) > 0:
 
-        se = df.iloc[-1]
-
+        if dt_now in df.index:
+            se = df.loc[dt_now]
+        else:
+            se = df.iloc[-1]
+            
         tw = {}
         tw["rate"] = se["貯水率"]
         tw["time"] = se["日時"].strftime("%H:%M")
@@ -112,7 +115,9 @@ def fetch_dam(dam, dt_now):
 if __name__ == "__main__":
 
     JST = datetime.timezone(datetime.timedelta(hours=+9))
-    dt_now = datetime.datetime.now(JST)
+    dt_now = (datetime.datetime.now(JST) - datetime.timedelta(minutes=8)).replace(
+        minute=0, second=0, microsecond=0, tzinfo=None
+    )
 
     for dam in dams:
         fetch_dam(dam, dt_now)
