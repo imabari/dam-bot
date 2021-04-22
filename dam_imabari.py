@@ -92,6 +92,8 @@ def fetch_dam(dam, dt_now):
 
     # 貯水率が欠損の行を削除
     df.dropna(subset=["貯水率"], inplace=True)
+    
+    df.set_index("日時", inplace=True)
 
     if len(df) > 0:
 
@@ -102,7 +104,7 @@ def fetch_dam(dam, dt_now):
             
         tw = {}
         tw["rate"] = se["貯水率"]
-        tw["time"] = se["日時"].strftime("%H:%M")
+        tw["time"] = se.name.strftime("%H:%M")
 
         diff = tw["rate"] - before
 
