@@ -59,18 +59,6 @@ def fetch_dam(dam, dt_now):
 
     api = tweepy.API(auth)
 
-    text = api.user_timeline(dam["twt_id"])[0].text
-
-    m = re.search(r"(\d+\.?\d*)%", text)
-
-    if m:
-        try:
-            before = float(m.group(1))
-        except:
-            before = 0
-    else:
-        before = 0
-
     url = f'http://183.176.244.72/kawabou-mng/customizeMyMenuKeika.do?GID=05-5101&userId=U1001&myMenuId={dam["dam_id"]}&PG=1&KTM=3'
 
     df = (
@@ -106,9 +94,7 @@ def fetch_dam(dam, dt_now):
         tw["rate"] = se["貯水率"]
         tw["time"] = se.name.strftime("%H:%M")
 
-        diff = tw["rate"] - before
-
-        twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n前回比{diff:+.1f}ポイント\n#今治 #{dam["name"]} #貯水率'
+        twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n#今治 #{dam["name"]} #貯水率'
 
         print(twit)
         api.update_status(twit)
