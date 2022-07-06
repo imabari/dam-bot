@@ -62,7 +62,7 @@ def fetch_dam(dam, dt_now):
     url = f'http://183.176.244.72/kawabou-mng/customizeMyMenuKeika.do?GID=05-5101&userId=U1001&myMenuId={dam["dam_id"]}&PG=1&KTM=3'
 
     df = (
-        pd.read_html(url, na_values="-")[1]
+        pd.read_html(url, na_values=["-", "閉局"])[1]
         .rename(
             columns={
                 0: "日時",
