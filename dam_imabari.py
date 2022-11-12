@@ -6,27 +6,15 @@ import pandas as pd
 import requests
 import tweepy
 
-dams = [
-    {
-        "name": "玉川ダム",
-        "twt_id": "BotTamagawaDam",
-        "dam_id": "U1001_MMENU003",
-        "CK": os.environ["TAMAGAWA_CK"],
-        "CS": os.environ["TAMAGAWA_CS"],
-        "AT": os.environ["TAMAGAWA_AT"],
-        "AS": os.environ["TAMAGAWA_AS"],
-    },
-    {
-        "name": "台ダム",
-        "twt_id": "BotUtenaDam",
-        "dam_id": "U1001_MMENU004",
-        "CK": os.environ["UTENA_CK"],
-        "CS": os.environ["UTENA_CS"],
-        "AT": os.environ["UTENA_AT"],
-        "AS": os.environ["UTENA_AS"],
-    },
-]
-
+dam = {
+    "name": "玉川ダム",
+    "twt_id": "BotTamagawaDam",
+    "dam_id": "U1001_MMENU003",
+    "CK": os.environ["TAMAGAWA_CK"],
+    "CS": os.environ["TAMAGAWA_CS"],
+    "AT": os.environ["TAMAGAWA_AT"],
+    "AS": os.environ["TAMAGAWA_AS"],
+}
 
 def date_parse(se, year):
 
@@ -107,5 +95,4 @@ if __name__ == "__main__":
         minute=0, second=0, microsecond=0, tzinfo=None
     )
 
-    for dam in dams:
-        fetch_dam(dam, dt_now)
+    fetch_dam(dam, dt_now)
