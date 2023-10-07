@@ -27,6 +27,7 @@ jobs:
       run: |
         python dam_imabari.py
       env:
+        TAMAGAWA_BT: ${{ secrets.TAMAGAWA_BT }}
         TAMAGAWA_CK: ${{ secrets.TAMAGAWA_CK }}
         TAMAGAWA_CS: ${{ secrets.TAMAGAWA_CS }}
         TAMAGAWA_AT: ${{ secrets.TAMAGAWA_AT }}
