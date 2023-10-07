@@ -6,16 +6,6 @@ import pandas as pd
 import requests
 import tweepy
 
-dam = {
-    "name": "玉川ダム",
-    "twt_id": "BotTamagawaDam",
-    "dam_id": "U1001_MMENU003",
-    "CK": os.environ["TAMAGAWA_CK"],
-    "CS": os.environ["TAMAGAWA_CS"],
-    "AT": os.environ["TAMAGAWA_AT"],
-    "AS": os.environ["TAMAGAWA_AS"],
-}
-
 def date_parse(se, year):
 
     df = se.str.extract("(\d{2}/\d{2})? *(\d{2}:\d{2})").fillna(method="ffill")
@@ -38,16 +28,15 @@ def date_parse(se, year):
 
     return pd.to_datetime(df_date.join(df_time))
 
+if __name__ == "__main__":
 
-def fetch_dam(dam, dt_now):
+    JST = datetime.timezone(datetime.timedelta(hours=+9))
 
-    # Twitterオブジェクトの生成
-    auth = tweepy.OAuthHandler(dam["CK"], dam["CS"])
-    auth.set_access_token(dam["AT"], dam["AS"])
+    dt_now = (datetime.datetime.now(JST) - datetime.timedelta(minutes=8)).replace(
+        minute=0, second=0, microsecond=0, tzinfo=None
+    )
 
-    api = tweepy.API(auth)
-
-    url = f'http://183.176.244.72/kawabou-mng/customizeMyMenuKeika.do?GID=05-5101&userId=U1001&myMenuId={dam["dam_id"]}&PG=1&KTM=3'
+    url = f"http://183.176.244.72/kawabou-mng/customizeMyMenuKeika.do?GID=05-5101&userId=U1001&myMenuId=U1001_MMENU003&PG=1&KTM=3"
 
     df = (
         pd.read_html(url, na_values=["-", "閉局"])[1]
@@ -68,7 +57,7 @@ def fetch_dam(dam, dt_now):
 
     # 貯水率が欠損の行を削除
     df.dropna(subset=["貯水率"], inplace=True)
-    
+
     df.set_index("日時", inplace=True)
 
     if len(df) > 0:
@@ -77,22 +66,20 @@ def fetch_dam(dam, dt_now):
             se = df.loc[dt_now]
         else:
             se = df.iloc[-1]
-            
-        tw = {}
-        tw["rate"] = se["貯水率"]
-        tw["time"] = se.name.strftime("%H:%M")
 
-        twit = f'ただいまの{dam["name"]}の貯水率は{tw["rate"]}%です（{tw["time"]}）\n#今治 #{dam["name"]} #貯水率'
+        rate = se["貯水率"]
+        time = se.name.strftime("%H:%M")
+
+        twit = f'ただいまの玉川ダムの貯水率は{rate}%です（{time}）\n#今治 #玉川ダム #貯水率'
+
+        # Twitter
+        bearer_token = os.environ["TAMAGAWA_BT"]
+        consumer_key = os.environ["TAMAGAWA_CK"]
+        consumer_secret = os.environ["TAMAGAWA_CS"]
+        access_token = os.environ["TAMAGAWA_AT"]
+        access_token_secret = os.environ["TAMAGAWA_AS"]
+
+        client = tweepy.Client(bearer_token, consumer_key, consumer_secret, access_token, access_token_secret)
 
         print(twit)
-        api.update_status(twit)
-
-
-if __name__ == "__main__":
-
-    JST = datetime.timezone(datetime.timedelta(hours=+9))
-    dt_now = (datetime.datetime.now(JST) - datetime.timedelta(minutes=8)).replace(
-        minute=0, second=0, microsecond=0, tzinfo=None
-    )
-
-    fetch_dam(dam, dt_now)
+        client.create_tweet(text=twit)
