@@ -1,85 +1,71 @@
-import datetime
 import os
-import re
 
 import pandas as pd
-import requests
-import tweepy
+from atproto import Client
 
-def date_parse(se, year):
+url = "http://183.176.244.72/kawabou-mng/customizeMyMenuKeika.do?GID=05-5101&userId=U1001&myMenuId=U1001_MMENU003&PG=1&KTM=2"
 
-    df = se.str.extract("(\d{2}/\d{2})? *(\d{2}:\d{2})").fillna(method="ffill")
+# 現在
+dt_now = pd.Timestamp.now(tz="Asia/Tokyo").tz_localize(None)
+dt_now
 
-    df_date = (
-        df[0]
-        .str.split("/", expand=True)
-        .rename(columns={0: "month", 1: "day"})
-        .astype(int)
+df = (
+    pd.read_html(url, na_values=["-", "閉局", "欠測"])[1]
+    .rename(
+        columns={
+            0: "日時",
+            1: "貯水位",
+            2: "流入量",
+            3: "放流量",
+            4: "貯水量",
+            5: "貯水率",
+        }
     )
+    .dropna(how="all", axis=1)
+)
 
-    df_date["year"] = year
+df_date = df["日時"].str.extract("(\d{2}/\d{2})? *(\d{2}:\d{2})").fillna(method="ffill")
 
-    df_time = (
-        df[1]
-        .str.split(":", expand=True)
-        .rename(columns={0: "hour", 1: "minute"})
-        .astype(int)
-    )
+df_date["year"] = dt_now.year
 
-    return pd.to_datetime(df_date.join(df_time))
+df_date[["month", "day"]] = (
+    df_date[0].str.strip().str.split("/", expand=True).astype(int)
+)
 
-if __name__ == "__main__":
+df_date[["hour", "minute"]] = (
+    df_date[1].str.strip().str.split(":", expand=True).astype(int)
+)
 
-    JST = datetime.timezone(datetime.timedelta(hours=+9))
+df_date["datetime"] = pd.to_datetime(
+    df_date[["year", "month", "day", "hour", "minute"]]
+)
 
-    dt_now = (datetime.datetime.now(JST) - datetime.timedelta(minutes=8)).replace(
-        minute=0, second=0, microsecond=0, tzinfo=None
-    )
+df_date["year"].mask(dt_now < df_date["datetime"], df_date["year"] - 1, inplace=True)
 
-    url = f"http://183.176.244.72/kawabou-mng/customizeMyMenuKeika.do?GID=05-5101&userId=U1001&myMenuId=U1001_MMENU003&PG=1&KTM=3"
+df["日時"] = pd.to_datetime(df_date[["year", "month", "day", "hour", "minute"]])
 
-    df = (
-        pd.read_html(url, na_values=["-", "閉局"])[1]
-        .rename(
-            columns={
-                0: "日時",
-                1: "貯水位",
-                2: "流入量",
-                3: "放流量",
-                4: "貯水量",
-                5: "貯水率",
-            }
-        )
-        .dropna(how="all", axis=1)
-    )
+# 貯水率が欠損の行を削除
+df.dropna(subset=["貯水率"], inplace=True)
 
-    df["日時"] = date_parse(df["日時"], dt_now.year)
+df.set_index("日時", inplace=True)
 
-    # 貯水率が欠損の行を削除
-    df.dropna(subset=["貯水率"], inplace=True)
+df
 
-    df.set_index("日時", inplace=True)
+at_user = os.environ["AT_USER"]
+at_pass = os.environ["AT_PASS"]
 
-    if len(df) > 0:
+client = Client()
+client.login(at_user, at_pass)
 
-        if dt_now in df.index:
-            se = df.loc[dt_now]
-        else:
-            se = df.iloc[-1]
+if len(df) > 0:
 
-        rate = se["貯水率"]
-        time = se.name.strftime("%H:%M")
+    se = df.iloc[-1]
+    d = {}
+    d["rate"] = se["貯水率"]
+    d["time"] = se.name.strftime("%H:%M")
 
-        twit = f'ただいまの玉川ダムの貯水率は{rate}%です（{time}）\n#今治 #玉川ダム #貯水率'
+    text = f'ただいまの玉川ダムの貯水率は{d["rate"]}%です（{d["time"]}）'
 
-        # Twitter
-        bearer_token = os.environ["TAMAGAWA_BT"]
-        consumer_key = os.environ["TAMAGAWA_CK"]
-        consumer_secret = os.environ["TAMAGAWA_CS"]
-        access_token = os.environ["TAMAGAWA_AT"]
-        access_token_secret = os.environ["TAMAGAWA_AS"]
+    client.send_post(text)
 
-        client = tweepy.Client(bearer_token, consumer_key, consumer_secret, access_token, access_token_secret)
-
-        print(twit)
-        client.create_tweet(text=twit)
+    print(text)
