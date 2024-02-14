@@ -59,12 +59,26 @@ client.login(at_user, at_pass)
 
 if len(df) > 0:
 
-    se = df.iloc[-1]
+    se_new = df.iloc[-1]
+
     d = {}
-    d["rate"] = se["貯水率"]
-    d["time"] = se.name.strftime("%H:%M")
+
+    d["rate"] = se_new["貯水率"]
+    d["time"] = se_new.name.strftime("%H:%M")
 
     text = f'ただいまの玉川ダムの貯水率は{d["rate"]}%です（{d["time"]}）'
+
+    pre_time = df.index[-1] - pd.Timedelta(hours=3)
+
+    df_pre = df[df.index <= pre_time].copy()
+
+    if not df_pre.empty:
+
+        se_pre = df_pre.iloc[-1]
+
+        diff = se_pre["貯水率"] - se_new["貯水率"]
+
+        text += f"\n前回比：{diff:+.2f}ポイント"
 
     client.send_post(text)
 
