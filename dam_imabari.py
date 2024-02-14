@@ -76,7 +76,7 @@ if len(df) > 0:
 
         se_pre = df_pre.iloc[-1]
 
-        diff = se_pre["貯水率"] - se_new["貯水率"]
+        diff = se_new["貯水率"] - se_pre["貯水率"]
 
         text += f"\n前回比：{diff:+.2f}ポイント"
 
