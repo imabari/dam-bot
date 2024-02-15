@@ -68,7 +68,7 @@ if len(df) > 0:
 
     text = f'ただいまの玉川ダムの貯水率は{d["rate"]}%です（{d["time"]}）'
 
-    pre_time = df.index[-1] - pd.Timedelta(hours=3)
+    pre_time = df.index[-1] - pd.Timedelta(hours=6)
 
     df_pre = df[df.index <= pre_time].copy()
 
