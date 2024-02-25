@@ -1,0 +1,33 @@
+name: Generate CSV
+
+on:
+  schedule:
+    - cron: '10 21 * * *'
+
+jobs:
+  generate_csv:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+
+    - name: Generate CSV
+      run: |
+        TODAY=$(TZ=JST-9 date +'%Y%m%d')
+        output_dir="data"
+        output_file="${output_dir}/${TODAY}.csv"
+        curl -sS "https://www.river.go.jp/kawabou/file/files/tmlist/dam/${TODAY}/0005/0972900700006.json" | jq -r '["日時","貯水率","流入量","放流量"],(.hrValues[] | [.obsTime, .storPcntIrr, .allSink, .allDisch]) | @csv' > "$output_file"
+        
+    - name: Commit and push if changes
+      run: |
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
+        git add .
+        git diff --quiet || git commit -m "Automated CSV update [skip ci]"
+        git push
