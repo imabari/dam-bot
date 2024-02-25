@@ -3,6 +3,7 @@ name: Generate CSV
 on:
   schedule:
     - cron: '10 21 * * *'
+  workflow_dispatch:
 
 jobs:
   generate_csv:
