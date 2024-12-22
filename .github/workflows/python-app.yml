@@ -1,8 +1,8 @@
 name: Python application
 
 on:
-  schedule:
-    - cron:  '10 3,9,15,21 * * *'
+#  schedule:
+#    - cron:  '10 3,9,15,21 * * *'
   workflow_dispatch:
     
 jobs:
