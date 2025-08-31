@@ -24,7 +24,7 @@ df = (
     .dropna(how="all", axis=1)
 )
 
-df_date = df["日時"].str.extract("(\d{2}/\d{2})? *(\d{2}:\d{2})").ffill()
+df_date = df["日時"].str.extract(r"(\d{2}/\d{2})? *(\d{2}:\d{2})").ffill()
 
 df_date["year"] = dt_now.year
 
@@ -40,7 +40,7 @@ df_date["datetime"] = pd.to_datetime(
     df_date[["year", "month", "day", "hour", "minute"]]
 )
 
-df_date["year"].mask(dt_now < df_date["datetime"], df_date["year"] - 1, inplace=True)
+df_date["year"] = df_date["year"].mask(dt_now < df_date["datetime"], df_date["year"] - 1)
 
 df["日時"] = pd.to_datetime(df_date[["year", "month", "day", "hour", "minute"]])
 
